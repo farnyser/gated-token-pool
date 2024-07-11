@@ -1,0 +1,20 @@
+[package]
+name = "gated-token-sale"
+version = "0.1.0"
+description = "Token Sale with limited supply by pubkey"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "gated_token_sale"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = { version = "0.30.1" , features = ["init-if-needed"]}
+anchor-spl = { version = "0.30.1" }
