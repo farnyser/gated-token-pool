@@ -3,6 +3,7 @@ name = "gated-token-sale"
 version = "0.1.0"
 description = "Token Sale with limited supply by pubkey"
 edition = "2021"
+authors = ["Serge Farny <serge.farny@gmail.com>"]
 
 [lib]
 crate-type = ["cdylib", "lib"]
