@@ -138,7 +138,7 @@ fn main() -> anyhow::Result<()> {
         } => {
             let token = token.unwrap_or(false);
             let quote = quote.unwrap_or(false);
-            if token == false && quote == false {
+            if !token && !quote {
                 anyhow::bail!("Must select token or quote");
             }
             if token && quote {

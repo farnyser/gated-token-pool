@@ -1,16 +1,15 @@
-use anchor_client::anchor_lang::{system_program, Id, Key};
-use anchor_client::solana_client::rpc_config::RpcSendTransactionConfig;
-use anchor_client::solana_sdk::commitment_config::{CommitmentConfig, CommitmentLevel};
-use anchor_client::solana_sdk::pubkey::Pubkey;
-use anchor_client::solana_sdk::rent::Rent;
-use anchor_client::solana_sdk::signature::{Keypair, Signature};
-use anchor_client::solana_sdk::signer::Signer;
-use anchor_client::solana_sdk::sysvar::SysvarId;
-use anchor_client::Client;
-use anchor_spl::associated_token::{get_associated_token_address, AssociatedToken};
-use anchor_spl::token::Token;
 use std::ops::Deref;
 use std::rc::Rc;
+
+use anchor_client::anchor_lang::{Id, Key};
+use anchor_client::solana_client::rpc_config::RpcSendTransactionConfig;
+use anchor_client::solana_sdk::commitment_config::CommitmentLevel;
+use anchor_client::solana_sdk::pubkey::Pubkey;
+use anchor_client::solana_sdk::signature::{Keypair, Signature};
+use anchor_client::solana_sdk::signer::Signer;
+use anchor_client::Client;
+use anchor_spl::associated_token::get_associated_token_address;
+use anchor_spl::token::Token;
 
 pub fn withdraw<C: Deref<Target = impl Signer> + Clone>(
     client: &Client<C>,

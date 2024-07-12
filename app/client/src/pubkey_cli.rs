@@ -21,6 +21,6 @@ impl Debug for PubkeyCli {
 
 impl Clone for PubkeyCli {
     fn clone(&self) -> Self {
-        PubkeyCli(self.0.clone())
+        PubkeyCli(self.0)
     }
 }
