@@ -37,11 +37,13 @@ pub fn buy<C: Deref<Target = impl Signer> + Clone>(
         ],
         &gated_token_sale::ID,
     );
-    let authorization_account: gated_token_sale::state::Authorization = program.account(authorization)?;
 
-    let remaining_amount = authorization_account.allowance_quantity - authorization_account.bought_quantity;
-    println!("Previous authorization: {}", remaining_amount);
-    println!("Simulated new authorization: {}", remaining_amount as i64 - amount as i64);
+    if let Ok(authorization_account) = program.account(authorization) {
+        let authorization_account : gated_token_sale::state::Authorization = authorization_account;
+        let remaining_amount = authorization_account.allowance_quantity - authorization_account.bought_quantity;
+        println!("Previous authorization: {}", remaining_amount);
+        println!("Simulated new authorization: {}", remaining_amount as i64 - amount as i64);
+    }
 
     // Build and send a transaction.
     let sig = program

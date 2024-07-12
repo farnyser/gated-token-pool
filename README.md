@@ -1,6 +1,6 @@
 # Gated Token Pool
 
-## Testing
+## Testing setup
 
 We will use SOL as quote token, and create a new mint for our testing
 
@@ -15,15 +15,17 @@ solana-test-validator
 In another terminal, crea   te new wallet for admin & user, and also airdrop some Sol:
 
 ```
-solana-keygen new -o admin.json
+solana-keygen new -o admin.json --force --no-passphrase
 solana config set -C admin.yml  --url http://localhost:8899 -k admin.json
 solana airdrop 100 -C admin.yml
+spl-token wrap 1 -C admin.yml
 ```
 
 ```
-solana-keygen new -o user.json
+solana-keygen new -o user.json  --force --no-passphrase
 solana config set -C user.yml  --url http://localhost:8899 -k user.json
 solana airdrop 100 -C user.yml
+spl-token wrap 1 -C user.yml
 ```
 
 We will need user wallet address later:
@@ -44,7 +46,7 @@ Mint some in your admin wallet
 
 ```
 spl-token create-account $MINT -C admin.yml
-spl-token mint $MINT 10000 -C admin.yml
+spl-token mint $MINT 1000000 -C admin.yml
 ```
 
 ### Build and deploy the program
@@ -54,51 +56,43 @@ anchor build
 anchor deploy
 ```
 
+## Usage
+
 ### Create pool 
 
 Price of 2000 lamports per native token  (2 SOL per 1 Token) 
 
 ```
-export POOL=$(cargo run --bin client -- -k admin.json create-pool --token $MINT --quote $QUOTE --price 2000 | grep 'pool:' | cut -d ':' -f 2 | xargs)
+export POOL=$(./target/debug/client -k admin.json create-pool --token $MINT --quote $QUOTE --price 2000 | grep 'pool:' | cut -d ':' -f 2 | xargs)
+echo $POOL
 ```
+
+### Deposit and or withdraw (as admin)
 
 Deposit some amount from admin wallet into the program vault
 
 ```
-cargo run --bin client -- -k admin.json deposit  --pool $POOL --amount 1000
+./target/debug/client -k admin.json deposit  --pool $POOL --amount 100000
 ```
 
 Withdraw from vault
 
 ```
-cargo run --bin client --  -k admin.json withdraw --pool $POOL --token --amount 50
+./target/debug/client  -k admin.json withdraw --pool $POOL --token --amount 5000
 ```
+
+### Create user buy allowance
 
 Create buy authorization for some user
 
 ```
-cargo run --bin client --  -k admin.json create-authorization  --pool $POOL --user $USER  --amount 1000
+./target/debug/client  -k admin.json create-authorization  --pool $POOL --user $USER  --amount 100000
 ```
+
+### Buy
 
 Buy (as a user)
-- First wrap some sol to be used to purchase token
-- Then issue the buy instruction
 
 ```
-spl-token wrap 1 -C user.yml
-cargo run --bin client -- -k user.json buy --pool $POOL --amount 100
-```
-
-See balance:
-
-``` 
-UQB=$(spl-token balance $QUOTE -C user.yml)
-UTB=$(spl-token balance $MINT -C user.yml)
-AQB=$(spl-token balance $QUOTE -C admin.yml)
-ATB=$(spl-token balance $MINT -C admin.yml)
-VQB=$(spl-token balance $QUOTE -C admin.yml --owner $POOL)
-VTB=$(spl-token balance $MINT -C admin.yml --owner $POOL)
-echo "User Token = $UTB | Quote = $UQB" 
-echo "Admin Token = $ATB | Quote = $AQB" 
-echo "Vault Token = $VTB | Quote = $VQB" 
+./target/debug/client -k user.json buy --pool $POOL --amount 10000
 ```
