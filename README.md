@@ -4,7 +4,7 @@
 
 We will use SOL as quote token, and create a new mint for our testing
 
-### Run local validator
+### Run local validator & deploy program
 
 ```
 solana-test-validator
@@ -12,30 +12,46 @@ solana-test-validator
 
 ### Create wallet for admin and user
 
-And airdrop some SOL
+In another terminal, crea   te new wallet for admin & user, and also airdrop some Sol:
 
 ```
 solana-keygen new -o admin.json
+solana config set -C admin.yml  --url http://localhost:8899 -k admin.json
+solana airdrop 100 -C admin.yml
+```
+
+```
 solana-keygen new -o user.json
-solana airdrop 100 -k admin.json
-solana airdrop 100 -k user.json
+solana config set -C user.yml  --url http://localhost:8899 -k user.json
+solana airdrop 100 -C user.yml
+```
+
+We will need user wallet address later:
+
+```
+export USER=$(solana address -C user.yml)
 ```
 
 ### Create token mint 
 
 ```
-solana config set --keypair admin.json
-spl-token create-token --decimals 6 
+export MINT=$(spl-token create-token --decimals 6 -C admin.yml | grep Address | cut -d ':' -f 2 | xargs)
+export QUOTE="So11111111111111111111111111111111111111112"
 ```
 
-Save the mints (example): 
-- `AnF3VpWyZAZU3Kzb4F31XpabJcqeVXgvpNgAMAURFtS4` 
 
 Mint some in your admin wallet
 
 ```
-spl-token create-account AnF3VpWyZAZU3Kzb4F31XpabJcqeVXgvpNgAMAURFtS4 
-spl-token mint AnF3VpWyZAZU3Kzb4F31XpabJcqeVXgvpNgAMAURFtS4 10000 
+spl-token create-account $MINT -C admin.yml
+spl-token mint $MINT 10000 -C admin.yml
+```
+
+### Build and deploy the program
+
+```
+anchor build
+anchor deploy
 ```
 
 ### Create pool 
@@ -43,39 +59,46 @@ spl-token mint AnF3VpWyZAZU3Kzb4F31XpabJcqeVXgvpNgAMAURFtS4 10000
 Price of 2000 lamports per native token  (2 SOL per 1 Token) 
 
 ```
-cargo run --bin client -- -k target/admin.json create-pool --token AnF3VpWyZAZU3Kzb4F31XpabJcqeVXgvpNgAMAURFtS4 --quote So11111111111111111111111111111111111111112 --price 2000
+export POOL=$(cargo run --bin client -- -k admin.json create-pool --token $MINT --quote $QUOTE --price 2000 | grep 'pool:' | cut -d ':' -f 2 | xargs)
 ```
-
-Save the output
-> Created pool: p6FHzSGqXdtH3nJ1oWZy2veAM9zcYCtADRfhpqjcUur
->  token vault: 61kAbzVFcw7bw75UBBfdR6zPo1pRJE2ynR9Z3dji1yEo
->  quote vault: 2JoJJFSCBxHp2PXkFoD8GiUjYChL93V6X6fpzhfRtasz
-
 
 Deposit some amount from admin wallet into the program vault
 
 ```
-cargo run --bin client -- -k target/admin.json deposit  --pool p6FHzSGqXdtH3nJ1oWZy2veAM9zcYCtADRfhpqjcUur --amount 1000
+cargo run --bin client -- -k admin.json deposit  --pool $POOL --amount 1000
 ```
 
 Withdraw from vault
 
 ```
-cargo run --bin client --  -k target/admin.json withdraw --pool p6FHzSGqXdtH3nJ1oWZy2veAM9zcYCtADRfhpqjcUur --token --amount 50
+cargo run --bin client --  -k admin.json withdraw --pool $POOL --token --amount 50
 ```
 
 Create buy authorization for some user
 
 ```
-cargo run --bin client --  -k target/admin.json create-authorization  --pool p6FHzSGqXdtH3nJ1oWZy2veAM9zcYCtADRfhpqjcUur --user A3LMxSj28m9jXCTgYk44XRJFPMokQ7mtCDsQaV9wi8Sh  --amount 1000
+cargo run --bin client --  -k admin.json create-authorization  --pool $POOL --user $USER  --amount 1000
 ```
-
 
 Buy (as a user)
+- First wrap some sol to be used to purchase token
+- Then issue the buy instruction
 
 ```
-solana config set --keypair user.json
-spl-token wrap 1
-cargo run --bin client -- -k target/user.json buy  --pool p6FHzSGqXdtH3nJ1oWZy2veAM9zcYCtADRfhpqjcUur --amount 100
+spl-token wrap 1 -C user.yml
+cargo run --bin client -- -k user.json buy --pool $POOL --amount 100
 ```
 
+See balance:
+
+``` 
+UQB=$(spl-token balance $QUOTE -C user.yml)
+UTB=$(spl-token balance $MINT -C user.yml)
+AQB=$(spl-token balance $QUOTE -C admin.yml)
+ATB=$(spl-token balance $MINT -C admin.yml)
+VQB=$(spl-token balance $QUOTE -C admin.yml --owner $POOL)
+VTB=$(spl-token balance $MINT -C admin.yml --owner $POOL)
+echo "User Token = $UTB | Quote = $UQB" 
+echo "Admin Token = $ATB | Quote = $AQB" 
+echo "Vault Token = $VTB | Quote = $VQB" 
+```
