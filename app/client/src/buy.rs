@@ -12,54 +12,57 @@ use anchor_spl::token::Token;
 use std::ops::Deref;
 use std::rc::Rc;
 
-pub fn create_pool<C: Deref<Target = impl Signer> + Clone>(
+pub fn buy<C: Deref<Target = impl Signer> + Clone>(
     client: &Client<C>,
     signer_wallet: Rc<Keypair>,
-    quote: Pubkey,
-    token: Pubkey,
-    price: u64,
+    pool: Pubkey,
+    amount: u64,
 ) -> anyhow::Result<Signature> {
     let program = client.program(gated_token_sale::ID)?;
 
-    let (gated_token_pool, _) = Pubkey::find_program_address(
+    let pool_account: gated_token_sale::state::GatedTokenPool = program.account(pool)?;
+
+    let gated_token_vault = get_associated_token_address(&pool.key(), &pool_account.token_mint);
+    let user_token_vault =
+        get_associated_token_address(&signer_wallet.pubkey().key(), &pool_account.token_mint);
+    let gated_quote_vault = get_associated_token_address(&pool.key(), &pool_account.quote_mint);
+    let user_quote_vault =
+        get_associated_token_address(&signer_wallet.pubkey().key(), &pool_account.quote_mint);
+
+    let (authorization, _) = Pubkey::find_program_address(
         &[
-            b"pool".as_ref(),
-            token.as_ref(),
-            quote.as_ref(),
+            b"authorization".as_ref(),
+            pool.as_ref(),
             signer_wallet.pubkey().as_ref(),
         ],
         &gated_token_sale::ID,
     );
 
-    let gated_token_vault = get_associated_token_address(&gated_token_pool.key(), &token);
-    let gated_quote_vault = get_associated_token_address(&gated_token_pool.key(), &quote);
-
     // Build and send a transaction.
     let sig = program
         .request()
         .signer(&signer_wallet)
-        .accounts(gated_token_sale::accounts::CreatePool {
-            token_mint: token,
-            quote_mint: quote,
-            admin: signer_wallet.pubkey(),
-            gated_token_pool: gated_token_pool.key(),
-            gated_token_vault: gated_token_vault.key(),
-            gated_quote_vault: gated_quote_vault.key(),
+        .accounts(gated_token_sale::accounts::Buy {
+            token_mint: pool_account.token_mint,
+            quote_mint: pool_account.quote_mint,
+            gated_token_pool: pool.key(),
+            gated_token_vault,
+            gated_quote_vault,
+            user_token_vault,
+            user_quote_vault,
+            authorization,
+            buyer: signer_wallet.pubkey(),
             system_program: system_program::ID,
             token_program: Token::id(),
             associated_token_program: AssociatedToken::id(),
             rent: Rent::id(),
         })
-        .args(gated_token_sale::instruction::CreatePool { price: price })
+        .args(gated_token_sale::instruction::Buy { amount })
         .send_with_spinner_and_config(RpcSendTransactionConfig {
             skip_preflight: true,
             preflight_commitment: Some(CommitmentLevel::Finalized),
             ..RpcSendTransactionConfig::default()
         })?;
-
-    println!("Created pool: {}", gated_token_pool);
-    println!(" token vault: {}", gated_token_vault);
-    println!(" quote vault: {}", gated_quote_vault);
 
     Ok(sig)
 }

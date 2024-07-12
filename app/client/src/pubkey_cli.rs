@@ -1,7 +1,7 @@
+use anchor_client::solana_sdk::pubkey::Pubkey;
+use anyhow::Result;
 use std::fmt::{Debug, Formatter};
 use std::str::FromStr;
-use anchor_client::solana_sdk::pubkey::Pubkey;
-use anyhow::{Result};
 
 pub struct PubkeyCli(pub Pubkey);
 

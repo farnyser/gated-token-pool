@@ -12,9 +12,11 @@ pub fn create_pool_instruction(ctx: Context<CreatePool>, price: u64) -> Result<(
         price
     );
 
+    ctx.accounts.gated_token_pool.bump = ctx.bumps.gated_token_pool;
     ctx.accounts.gated_token_pool.price = price;
     ctx.accounts.gated_token_pool.token_mint = ctx.accounts.token_mint.key();
     ctx.accounts.gated_token_pool.quote_mint = ctx.accounts.quote_mint.key();
+    ctx.accounts.gated_token_pool.admin = ctx.accounts.admin.key();
     Ok(())
 }
 
@@ -32,14 +34,14 @@ pub struct CreatePool<'info> {
     #[account(
         init,
         payer = admin,
-        space = 8 + 8 + 32 * 3,
+        space = 8 + 1 + 8 + 32 * 3,
         seeds = [b"pool", token_mint.key().as_ref(), quote_mint.key().as_ref(), admin.key().as_ref()],
         bump
     )]
     pub gated_token_pool: Account<'info, GatedTokenPool>,
 
     #[account(
-        init_if_needed,
+        init,
         payer = admin,
         associated_token::mint = token_mint,
         associated_token::authority = gated_token_pool
@@ -47,12 +49,12 @@ pub struct CreatePool<'info> {
     pub gated_token_vault: Account<'info, TokenAccount>,
 
     #[account(
-        init_if_needed,
+        init,
         payer = admin,
         associated_token::mint = quote_mint,
         associated_token::authority = gated_token_pool
     )]
-    pub gated_base_vault: Account<'info, TokenAccount>,
+    pub gated_quote_vault: Account<'info, TokenAccount>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,

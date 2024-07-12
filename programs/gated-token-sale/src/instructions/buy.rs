@@ -5,6 +5,7 @@ use crate::GatedTokenPool;
 use anchor_lang::context::Context;
 use anchor_lang::prelude::{Account, Signer};
 use anchor_lang::Accounts;
+use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{Mint, Token, TokenAccount, Transfer};
 
 pub fn buy_instruction(ctx: Context<Buy>, token_amount: u64) -> anchor_lang::Result<()> {
@@ -40,11 +41,14 @@ pub fn buy_instruction(ctx: Context<Buy>, token_amount: u64) -> anchor_lang::Res
 
     // Token
     {
+        let admin = ctx.accounts.gated_token_pool.admin.key();
+        let bump_seed = ctx.accounts.gated_token_pool.bump;
         let seeds = &[
             b"pool",
             ctx.accounts.gated_token_pool.token_mint.as_ref(),
             ctx.accounts.gated_token_pool.quote_mint.as_ref(),
-            ctx.accounts.gated_token_pool.admin.as_ref(),
+            admin.as_ref(),
+            &[bump_seed],
         ];
         let signer = &[&seeds[..]];
 
@@ -88,7 +92,8 @@ pub struct Buy<'info> {
     pub gated_quote_vault: Account<'info, TokenAccount>,
 
     #[account(
-        mut,
+        init_if_needed,
+        payer = buyer,
         associated_token::mint = token_mint,
         associated_token::authority = buyer
     )]
@@ -102,13 +107,17 @@ pub struct Buy<'info> {
     pub user_quote_vault: Account<'info, TokenAccount>,
 
     #[account(
+        mut,
         seeds = [b"authorization", gated_token_pool.key().as_ref(), buyer.key().as_ref()],
         bump
     )]
     pub authorization: Account<'info, Authorization>,
 
-    #[account()]
+    #[account(mut)]
     buyer: Signer<'info>,
 
     pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub rent: Sysvar<'info, Rent>,
 }

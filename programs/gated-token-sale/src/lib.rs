@@ -1,5 +1,5 @@
 mod instructions;
-mod state;
+pub mod state;
 
 use anchor_lang::prelude::*;
 use instructions::*;

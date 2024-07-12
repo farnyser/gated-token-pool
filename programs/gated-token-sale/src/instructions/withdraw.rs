@@ -12,11 +12,13 @@ pub fn withdraw_instruction(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
     );
 
     let admin = ctx.accounts.admin.key();
+    let bump_seed = ctx.accounts.gated_token_pool.bump;
     let seeds = &[
         b"pool",
         ctx.accounts.gated_token_pool.token_mint.as_ref(),
         ctx.accounts.gated_token_pool.quote_mint.as_ref(),
         admin.as_ref(),
+        &[bump_seed],
     ];
     let signer = &[&seeds[..]];
 
